@@ -35,20 +35,20 @@
 
 #define	MAX_BYTES_BY_ROW	16
 void displayUDPPacket(FILE *output,UDP_fields *udp,int size){
-fprintf(output,"UDP Port source: %04x\n",ntohs(udp->source));
-fprintf(output,"UDP Port target: %04x\n",ntohs(udp->target));
-fprintf(output,"UDP Checksum: %04x\n",ntohs(udp->checksum));
-fprintf(output,"UDP Data:\n  ");
-int i;
-int data_size=size-sizeof(UDP_fields)+1;
-for(i=0;i<data_size;i++){
-  fprintf(output,"%02hhx ",udp->data[i]);
-  if(i%MAX_BYTES_BY_ROW == MAX_BYTES_BY_ROW-1){
-    fprintf(output,"\n");
-    if(i<data_size-1) fprintf(output,"  ");
+  fprintf(output,"UDP Port source: %04x\n",ntohs(udp->source));
+  fprintf(output,"UDP Port target: %04x\n",ntohs(udp->target));
+  fprintf(output,"UDP Checksum: %04x\n",ntohs(udp->checksum));
+  fprintf(output,"UDP Data:\n  ");
+  int i;
+  int data_size=size-sizeof(UDP_fields)+1;
+  for(i=0;i<data_size;i++){
+    fprintf(output,"%02hhx ",udp->data[i]);
+    if(i%MAX_BYTES_BY_ROW == MAX_BYTES_BY_ROW-1){
+      fprintf(output,"\n");
+      if(i<data_size-1) fprintf(output,"  ");
+      }
     }
-  }
-if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"\n");
+  if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"\n");
 }
 #endif
 
@@ -76,8 +76,7 @@ if(ntohs(udp->length)!=size){
   free(data); free(iph); return 0;
   }
 if(udp->checksum!=0){
-  unsigned short int checksum=pseudoHeaderChecksum(
-    iph->source,iph->target,IPV4_PROTOCOL_UDP,&data,size);
+  unsigned short int checksum=pseudoHeaderChecksum( iph->source, iph->target, IPV4_PROTOCOL_UDP, &data, size);
   udp=(UDP_fields *)data;
   if(checksum!=0){
 #ifdef VERBOSE

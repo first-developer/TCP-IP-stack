@@ -37,6 +37,23 @@ static int ipFillHeader(
 // Functions
 ////
 
+
+(AssocArray *) set_icmp_infos( unsigned char** data, IPv4Address source, int data_reply_size )
+	int reply_size=data_reply_size;
+	*data=(unsigned char *)realloc(*data,reply_size);
+	if(*data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
+	memmove(*data+4,*data,reply_size-4);
+	bzero(*data,4); 
+	AssocArray *icmp_infos=NULL;
+	arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
+	arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
+	arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
+	arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
+	arraysSetValue(&icmp_infos,"ldst",&source,sizeof(IPv4Address),0);
+	eventsTrigger(picmp->event_out,icmp_infos);
+
+
+
 //
 // Display IPv4 packet
 //
@@ -102,83 +119,129 @@ if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"\n");
 //
 
 unsigned char ipDecodePacket(EventsEvent *event,EventsSelector *selector){
-AssocArray *infos=(AssocArray *)selector->data_this;
-if(arraysTestIndex(infos,"data",0)<0 || arraysTestIndex(infos,"size",0)<0)
-  { arraysFreeArray(infos); return 1; }
-unsigned char *data=(unsigned char *)arraysGetValue(infos,"data",NULL,0);
-int size=*((int *)arraysGetValue(infos,"size",NULL,0));
-arraysFreeArray(infos);
-IPv4_fields *ip=(IPv4_fields *)data;
-unsigned short int checksum=genericChecksum(data,4*IPv4_get_hlength(ip));
-if(checksum!=0){
-#ifdef VERBOSE
-  fprintf(stderr,"IP packet: bad checksum !\n");
-#endif
-  free(data); return 0;
-  }
-if(ip->ttl==0){
-#ifdef VERBOSE
-  fprintf(stderr,"IP packet: null TTL !\n");
-#endif
-  free(data); return 0;
-  }
-if(ntohs(ip->length)!=size){
-#ifdef VERBOSE
-  fprintf(stderr,"IP packet: bad size !\n");
-#endif
-  free(data); return 0;
-  }
-if(!ipCompare(ip->target,IPV4_ADDRESS_BROADCAST) &&
-   stackFindDeviceByIPv4Broadcast(ip->target)!=NULL &&
-   stackFindDeviceByIPv4(ip->target)!=NULL){
-#ifdef VERBOSE
-  fprintf(stderr,"IP packet: not for us !\n");
-#endif
-  free(data); return 0;
-  }
-#ifdef VERBOSE
-/* TODO: handle fragments */
-fprintf(stderr,"Incoming IP packet:\n");
-displayIPv4Packet(stderr,ip,size);
-#endif
-int size_data=size;
-StackLayers *layer=stackFindProtoById(LEVEL_TRANSPORT,ip->protocol);
-if(layer!=NULL && layer->event_in>=0){
-  int size_header=IPv4_get_hlength(ip)*4;
-  unsigned char *iph=(unsigned char *)malloc(size_header);
-  memcpy(iph,data,size_header);
-  size_data=size-size_header;
-  memmove(data,data+size_header,size_data);
-  data=(unsigned char *)realloc(data,size_data);
-  if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
-  AssocArray *infos=NULL;
-  arraysSetValue(&infos,"data",data,size_data,AARRAY_DONT_DUPLICATE);
-  arraysSetValue(&infos,"size",&size_data,sizeof(int),0);
-  arraysSetValue(&infos,"iph",iph,size_header,AARRAY_DONT_DUPLICATE);
-  eventsTrigger(layer->event_in,infos);
-  }
-else{
-  StackLayers *picmp=stackFindProtoById(LEVEL_TRANSPORT,IPV4_PROTOCOL_ICMP);
-  if(picmp!=NULL && picmp->event_out>=0){
-    unsigned char type=ICMPV4_TYPE_UNREACHABLE;
-    unsigned char code=ICMPV4_UNREACHABLE_CODE_PROTOCOL;
-    IPv4Address source=ip->source;
-    int reply_size=(IPv4_get_hlength(ip)+3)*4;
-    data=(unsigned char *)realloc(data,reply_size);
-    if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
-    memmove(data+4,data,reply_size-4);
-    bzero(data,4);
-    AssocArray *icmp_infos=NULL;
-    arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
-    arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
-    arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
-    arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
-    arraysSetValue(&icmp_infos,"ldst",&source,sizeof(IPv4Address),0);
-    eventsTrigger(picmp->event_out,icmp_infos);
-    }
-  else free(data);
-  }
-return 0;
+	AssocArray *infos=(AssocArray *)selector->data_this;
+	if(arraysTestIndex(infos,"data",0)<0 || arraysTestIndex(infos,"size",0)<0)
+		{ arraysFreeArray(infos); return 1; }
+	unsigned char *data=(unsigned char *)arraysGetValue(infos,"data",NULL,0);
+	int size=*((int *)arraysGetValue(infos,"size",NULL,0));
+	arraysFreeArray(infos);
+	IPv4_fields *ip=(IPv4_fields *)data;
+	unsigned short int checksum=genericChecksum(data,4*IPv4_get_hlength(ip));
+	if(checksum!=0){
+		#ifdef VERBOSE
+			fprintf(stderr,"IP packet: bad checksum !\n");
+		#endif
+			free(data); return 0;
+	}
+	if(ip->ttl==0){
+	#ifdef VERBOSE
+		fprintf(stderr,"IP packet: null TTL !\n");
+		
+		// ------------------------------------------------------------------
+		// Sending ICMP Time exceeded packet to the sender if ip->ttl == 0 
+		// ------------------------------------------------------------------
+		
+		// Get the layer related to the sender
+		StackLayers *picmp=stackFindProtoById(LEVEL_TRANSPORT,IPV4_PROTOCOL_ICMP);
+		
+		// Verify if everything work fine after the 'stackFindProtoById' call
+		if(picmp!=NULL && picmp->event_out>=0){
+		
+			// Set the type of the ICMP message (ICMPV4_TYPE_TIME_EXCEEDED: 11)
+		  unsigned char type= ICMPV4_TYPE_TIME_EXCEEDED;
+		  
+	  	// Set the type of the ICMP message (ICMPV4_UNREACHABLE_CODE_NETWORK: 0)
+		  unsigned char code= ICMPV4_UNREACHABLE_CODE_NETWORK;
+		  
+		  // Set icmp header (type + code + header checksum)
+		  int icmp_header_size = 4*sizeof(unsigned char);
+		  
+		  // Set icmp unused size (unused field) 
+		  int icmp_unused_size = 4*sizeof(unsigned char); 
+		  
+		  // Set icmp data size (IP Header + First 8 Bytes of Original Datagram's Data) 
+		  int icmp_data_size 	 = IPv4_get_hlength(ip) + 8*sizeof(unsigned char); 
+		  
+		  // Set the icmp reply_size  
+		  int icmp_size = icmp_header_size + icmp_unused_size + icmp_data_size;
+		  
+		  // init icmp data and check if realloc well done
+		  data = (unsigned char *)realloc(data, icmp_data_size );
+		  if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
+		  
+		  // Create and set the ICMP paquet
+		  AssocArray *icmp_time_exceeded_infos=NULL;
+		  arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
+		  arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
+		  arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
+		  arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
+		  arraysSetValue(&icmp_infos,"ldst",&source,sizeof(IPv4Address),0);
+		  eventsTrigger(picmp->event_out,icmp_infos);
+		  }
+		  
+		  // ------------------------------------------------------------------
+		
+		
+	#endif
+		free(data); return 0;
+		}
+	if(ntohs(ip->length)!=size){   // verify if data size == ip->total_lenght
+	#ifdef VERBOSE
+		fprintf(stderr,"IP packet: bad size !\n");
+	#endif
+		free(data); return 0;
+		}
+	if(!ipCompare(ip->target,IPV4_ADDRESS_BROADCAST) &&
+		 stackFindDeviceByIPv4Broadcast(ip->target)!=NULL &&
+		 stackFindDeviceByIPv4(ip->target)!=NULL){
+	#ifdef VERBOSE
+		fprintf(stderr,"IP packet: not for us !\n");
+	#endif
+		free(data); return 0;
+		}
+	#ifdef VERBOSE
+	/* TODO: handle fragments */
+	fprintf(stderr,"Incoming IP packet:\n");
+	displayIPv4Packet(stderr,ip,size);
+	#endif
+	int size_data=size;
+	StackLayers *layer=stackFindProtoById(LEVEL_TRANSPORT,ip->protocol);
+	if(layer!=NULL && layer->event_in>=0){
+		int size_header=IPv4_get_hlength(ip)*4;
+		unsigned char *iph=(unsigned char *)malloc(size_header);
+		memcpy(iph,data,size_header);
+		size_data=size-size_header;
+		memmove(data,data+size_header,size_data);
+		data=(unsigned char *)realloc(data,size_data);
+		if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
+		AssocArray *infos=NULL;
+		arraysSetValue(&infos,"data",data,size_data,AARRAY_DONT_DUPLICATE);
+		arraysSetValue(&infos,"size",&size_data,sizeof(int),0);
+		arraysSetValue(&infos,"iph",iph,size_header,AARRAY_DONT_DUPLICATE);
+		eventsTrigger(layer->event_in,infos);
+		}
+	else{
+		StackLayers *picmp=stackFindProtoById(LEVEL_TRANSPORT,IPV4_PROTOCOL_ICMP);
+		if(picmp!=NULL && picmp->event_out>=0){
+		  unsigned char type=ICMPV4_TYPE_UNREACHABLE;
+		  unsigned char code=ICMPV4_UNREACHABLE_CODE_PROTOCOL;
+		  IPv4Address source=ip->source;
+		  int reply_size=(IPv4_get_hlength(ip)+3)*4;
+		  data=(unsigned char *)realloc(data,reply_size);
+		  if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
+		  memmove(data+4,data,reply_size-4);
+		  bzero(data,4); 
+		  AssocArray *icmp_infos=NULL;
+		  arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
+		  arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
+		  arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
+		  arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
+		  arraysSetValue(&icmp_infos,"ldst",&source,sizeof(IPv4Address),0);
+		  eventsTrigger(picmp->event_out,icmp_infos);
+		  }
+		else free(data);
+		}
+	return 0;
 }
 
 //
@@ -203,7 +266,7 @@ int len_pkt=len_hdr+size_data;
 if(*packet==NULL)
   { perror("ipFillHeader.realloc"); arraysFreeArray(options); return 1; }
 memmove(*packet+len_hdr,*packet,size_data);
-bzero(*packet,len_hdr);
+ifbzero(*packet,len_hdr);
 IPv4_fields *ip=(IPv4_fields *)*packet;
 if(arraysTestIndex(options,"lsrc",0)>=0)
   ip->source=*((IPv4Address *)arraysGetValue(options,"lsrc",NULL,0));
@@ -427,23 +490,21 @@ for(i=0;i<IPV4_ADDRESS_SIZE;i++) field[i]=ip.bytes[i];
 // Compute checksum with pseudo header
 //
 
-unsigned short int pseudoHeaderChecksum(
-  IPv4Address source,IPv4Address target,
-  unsigned char protocol,unsigned char **bytes,int size){
-int size_phdr=sizeof(IPv4_pseudo_header);
-int size_total=size+size_phdr;
-*bytes=(unsigned char *)realloc(*bytes,size_total);
-if(*bytes==NULL){ perror("pseudoHeaderChecksum.realloc"); exit(-1); }
-memmove(*bytes+size_phdr,*bytes,size);
-IPv4_pseudo_header *pheader=(IPv4_pseudo_header *)*bytes;
-pheader->source=source;
-pheader->target=target;
-pheader->zero=0x00;
-pheader->protocol=protocol;
-pheader->length=htons((short int)size);
-unsigned short int checksum=genericChecksum(*bytes,size_total);
-memmove(*bytes,*bytes+size_phdr,size);
-*bytes=(unsigned char *)realloc(*bytes,size);
-if(*bytes==NULL){ perror("pseudoHeaderChecksum.realloc"); exit(-1); }
-return checksum;
+unsigned short int pseudoHeaderChecksum(  IPv4Address source,IPv4Address target,  unsigned char protocol,unsigned char **bytes,int size){
+	int size_phdr=sizeof(IPv4_pseudo_header);
+	int size_total=size+size_phdr;
+	*bytes=(unsigned char *)realloc(*bytes,size_total);
+	if(*bytes==NULL){ perror("pseudoHeaderChecksum.realloc"); exit(-1); }
+	memmove(*bytes+size_phdr,*bytes,size);
+	IPv4_pseudo_header *pheader=(IPv4_pseudo_header *)*bytes;
+	pheader->source=source;
+	pheader->target=target;
+	pheader->zero=0x00;
+	pheader->protocol=protocol;
+	pheader->length=htons((short int)size);
+	unsigned short int checksum=genericChecksum(*bytes,size_total);
+	memmove(*bytes,*bytes+size_phdr,size);
+	*bytes=(unsigned char *)realloc(*bytes,size);
+	if(*bytes==NULL){ perror("pseudoHeaderChecksum.realloc"); exit(-1); }
+	return checksum;
 }
