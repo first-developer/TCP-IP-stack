@@ -119,40 +119,6 @@ if(checksum!=0){
 if(ip->ttl==0){
 #ifdef VERBOSE
   fprintf(stderr,"IP packet: null TTL !\n");
-	
-	// ------------------------------------------------------------------
-	// Sending ICMP Time exceeded packet to the sender if ip->ttl == 0 
-	// ------------------------------------------------------------------
-
-	// Get the layer related to the sender
-	StackLayers *picmp=stackFindProtoById(LEVEL_TRANSPORT,IPV4_PROTOCOL_ICMP);
-		
-	// Verify if everything work fine after the 'stackFindProtoById' call
-	if(picmp!=NULL && picmp->event_out>=0){
-		
-		// Set the type of the ICMP message (ICMPV4_TYPE_TIME_EXCEEDED: 11)
-  	unsigned char type= ICMPV4_TYPE_TIME_EXCEEDED;
-		  
- 		// Set the type of the ICMP message (ICMPV4_UNREACHABLE_CODE_NETWORK: 0)
-  	unsigned char code= ICMPV4_UNREACHABLE_CODE_NETWORK;
-		
-		//  Get src address and data of the datagram sent
-		IPv4Address source=ip->source;
-    int reply_size=(IPv4_get_hlength(ip)+3)*4;
-    data=(unsigned char *)realloc(data,reply_size);
-    if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
-    memmove(data,data,reply_size);
-    
-
-		// Initialized and set the icmp packet to replay
-    AssocArray *icmp_infos=NULL;
-    arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
-    arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
-    arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
-    arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
-    arraysSetValue(&icmp_infos,"ldst",&source,sizeof(IPv4Address),0);
-    eventsTrigger(picmp->event_out,icmp_infos);
-
 #endif
   free(data); return 0;
   }
@@ -219,7 +185,8 @@ return 0;
 // Send IPv4 packet
 //
 
-static int ipFillHeader( unsigned char **packet,AssocArray *headers,AssocArray *options){
+static int ipFillHeader(
+       unsigned char **packet,AssocArray *headers,AssocArray *options){
 if(arraysTestIndex(headers,"ldst",0)<0 ||
    arraysTestIndex(headers,"proto",0)<0 ||
    arraysTestIndex(headers,"size",0)<0)

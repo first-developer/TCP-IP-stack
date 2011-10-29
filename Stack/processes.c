@@ -30,18 +30,18 @@
 ////
 
 #define UDP_ECHO_PROMPT		"> "
-unsigned char udp_echo(
-  unsigned char type,
-  SocketAddress to,SocketAddress from,
-  unsigned char *data,int size){
-printf("udp_echo: type=%x\n",type);
-if(type==PROCESS_DATA){
-  printf("udp_echo: (%s,%hu)",ipAddress2String(from.address),from.port);
-  printf("->(%s,%hu)\n",ipAddress2String(to.address),to.port);
-  data=(unsigned char *)realloc(data,size+2);
-  memmove(data+2,data,size);
-  memcpy(data,UDP_ECHO_PROMPT,strlen(UDP_ECHO_PROMPT));
-  return stackUDPSendDatagram(from.address,from.port,data,size+2);
-  }
-return 0;
+unsigned char udp_echo(  unsigned char type,  SocketAddress to,SocketAddress from,  unsigned char *data,int size){
+	printf("udp_echo: type=%x\n",type);
+	if(type==PROCESS_DATA){
+		printf("udp_echo: (%s,%hu)",ipAddress2String(from.address),from.port);
+		printf("->(%s,%hu)\n",ipAddress2String(to.address),to.port);
+		printf(" size : %d\n", size);
+		data=(unsigned char *)realloc(data,size+2);
+		memmove(data+2,data,size);
+		printf(" data after memmove : %s\n", data);
+		memcpy(data,UDP_ECHO_PROMPT,strlen(UDP_ECHO_PROMPT));
+		printf(" data after memcpy : : %s\n", data);
+		return stackUDPSendDatagram(from.address,from.port,data,size+2);
+	}
+	return 0;
 }

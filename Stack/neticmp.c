@@ -33,6 +33,7 @@
 //
 
 void displayICMPv4Packet(FILE *output,ICMPv4_fields *icmp,int size){
+
 }
 #endif
 
@@ -41,7 +42,11 @@ void displayICMPv4Packet(FILE *output,ICMPv4_fields *icmp,int size){
 //
 
 unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
-return 0;
+
+
+
+
+	return 0;
 }
 
 //
@@ -49,5 +54,7 @@ return 0;
 //
 
 unsigned char icmpSendPacket(EventsEvent *event,EventsSelector *selector){
-return 0;
+
+	
+	return 0;
 }
