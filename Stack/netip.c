@@ -38,19 +38,32 @@ static int ipFillHeader(
 ////
 
 
-(AssocArray *) set_icmp_infos( unsigned char** data, IPv4Address source, int data_reply_size )
-	int reply_size=data_reply_size;
-	*data=(unsigned char *)realloc(*data,reply_size);
-	if(*data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
-	memmove(*data+4,*data,reply_size-4);
-	bzero(*data,4); 
-	AssocArray *icmp_infos=NULL;
-	arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
-	arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
-	arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
-	arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
-	arraysSetValue(&icmp_infos,"ldst",&source,sizeof(IPv4Address),0);
-	eventsTrigger(picmp->event_out,icmp_infos);
+
+
+// set_icmp_infos: To set the icmp infos to send
+//==============================================
+
+AssocArray* set_icmp_infos( 
+	AssocArray **icmp_infos, unsigned char* data, unsigned char* type, unsigned char* code, int* reply_size, IPv4Address* source ) {
+	
+	// init icmp data and check if realloc well done
+	data =(unsigned char *)realloc(data,*reply_size);
+	
+	if((unsigned char *)data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
+	memmove(data+4,*data,reply_size-4);
+	bzero(data,4); 
+	
+	// Create and set the ICMP paquet
+	
+	arraysSetValue(&icmp_infos,"type",type,sizeof(unsigned char),0);
+	arraysSetValue(&icmp_infos,"code",code,sizeof(unsigned char),0);
+	arraysSetValue(&icmp_infos,"data",data,*reply_size,AARRAY_DONT_DUPLICATE);
+	arraysSetValue(&icmp_infos,"size",reply_size,sizeof(int),0);
+	arraysSetValue(&icmp_infos,"ldst",source,sizeof(IPv4Address),0);
+	
+	return icmp_infos;
+}
+	
 
 
 
@@ -153,34 +166,20 @@ unsigned char ipDecodePacket(EventsEvent *event,EventsSelector *selector){
 	  	// Set the type of the ICMP message (ICMPV4_UNREACHABLE_CODE_NETWORK: 0)
 		  unsigned char code= ICMPV4_UNREACHABLE_CODE_NETWORK;
 		  
-		  // Set icmp header (type + code + header checksum)
-		  int icmp_header_size = 4*sizeof(unsigned char);
+		  // Set data reply size
+		  int reply_size=(IPv4_get_hlength(ip)+3)*4;
 		  
-		  // Set icmp unused size (unused field) 
-		  int icmp_unused_size = 4*sizeof(unsigned char); 
+		  // Initialize and set icmp infos
+		  AssocArray* icmp_infos = =NULL;
 		  
-		  // Set icmp data size (IP Header + First 8 Bytes of Original Datagram's Data) 
-		  int icmp_data_size 	 = IPv4_get_hlength(ip) + 8*sizeof(unsigned char); 
-		  
-		  // Set the icmp reply_size  
-		  int icmp_size = icmp_header_size + icmp_unused_size + icmp_data_size;
-		  
-		  // init icmp data and check if realloc well done
-		  data = (unsigned char *)realloc(data, icmp_data_size );
-		  if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
-		  
-		  // Create and set the ICMP paquet
-		  AssocArray *icmp_time_exceeded_infos=NULL;
-		  arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
-		  arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
-		  arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
-		  arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
-		  arraysSetValue(&icmp_infos,"ldst",&source,sizeof(IPv4Address),0);
-		  eventsTrigger(picmp->event_out,icmp_infos);
-		  }
-		  
-		  // ------------------------------------------------------------------
-		
+		  if ( set_icmp_infos( &icmp_infos, data, &type, &code, &reply_size, &(ip->source)) == 0 )
+				// Run the trigger to handle the message sending
+				eventsTrigger(picmp->event_out,icmp_infos);
+			else {
+				return 1;
+			}
+				
+		}
 		
 	#endif
 		free(data); return 0;
@@ -225,22 +224,23 @@ unsigned char ipDecodePacket(EventsEvent *event,EventsSelector *selector){
 		if(picmp!=NULL && picmp->event_out>=0){
 		  unsigned char type=ICMPV4_TYPE_UNREACHABLE;
 		  unsigned char code=ICMPV4_UNREACHABLE_CODE_PROTOCOL;
-		  IPv4Address source=ip->source;
 		  int reply_size=(IPv4_get_hlength(ip)+3)*4;
-		  data=(unsigned char *)realloc(data,reply_size);
-		  if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
-		  memmove(data+4,data,reply_size-4);
-		  bzero(data,4); 
-		  AssocArray *icmp_infos=NULL;
-		  arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
-		  arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
-		  arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
-		  arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
-		  arraysSetValue(&icmp_infos,"ldst",&source,sizeof(IPv4Address),0);
-		  eventsTrigger(picmp->event_out,icmp_infos);
-		  }
-		else free(data);
+		  
+		  // Initialize and set icmp infos
+		  AssocArray* icmp_infos = =NULL;
+		  
+		  if ( set_icmp_infos( &icmp_infos, data, &type, &code, &reply_size, &(ip->source)) == 0 ) {
+				// Run the trigger to handle the message sending
+				eventsTrigger(picmp->event_out,icmp_infos);
+			}
+			else {
+				return 1;
+			}
+
+   	else free(data);
 		}
+  }
+
 	return 0;
 }
 
