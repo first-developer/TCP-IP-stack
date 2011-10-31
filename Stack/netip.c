@@ -119,7 +119,7 @@ if(checksum!=0){
 if(ip->ttl==0){
 #ifdef VERBOSE
   fprintf(stderr,"IP packet: null TTL !\n");
-	
+#endif	
 	// ------------------------------------------------------------------
 	// Sending ICMP Time exceeded packet to the sender if ip->ttl == 0 
 	// ------------------------------------------------------------------
@@ -134,7 +134,7 @@ if(ip->ttl==0){
   	unsigned char type= ICMPV4_TYPE_TIME_EXCEEDED;
 		  
  		// Set the type of the ICMP message (ICMPV4_UNREACHABLE_CODE_NETWORK: 0)
-  	unsigned char code= ICMPV4_UNREACHABLE_CODE_NETWORK;
+  	unsigned char code= ICMPV4_CODE_NONE;
 		
 		//  Get src address and data of the datagram sent
 		IPv4Address source=ip->source;
@@ -152,8 +152,8 @@ if(ip->ttl==0){
     arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
     arraysSetValue(&icmp_infos,"ldst",&source,sizeof(IPv4Address),0);
     eventsTrigger(picmp->event_out,icmp_infos);
+  }
 
-#endif
   free(data); return 0;
   }
 if(ntohs(ip->length)!=size){
