@@ -48,20 +48,8 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 
 	return 0;
 }
-/*
-    arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
-    arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
-    arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
-    arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
-    arraysSetValue(&icmp_infos,"ldst",&source,sizeof(IPv4Address),0);
 
 
-    unsigned char *data=(unsigned char *)arraysGetValue(infos,"data",NULL,0);
-    int size=*((int *)arraysGetValue(infos,"size",NULL,0));
-    arraysFreeArray(infos);
-    IPv4_fields *ip=(IPv4_fields *)data;
-    unsigned short int checksum=genericChecksum(data,4*IPv4_get_hlength(ip));
-*/
 
 //
 // Send ICMPv4 packet
