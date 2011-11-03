@@ -42,7 +42,31 @@ void displayICMPv4Packet(FILE *output,ICMPv4_fields *icmp,int size){
 //
 
 unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
-
+	
+	// Get icmp data from the selector
+	AssocArray *infos=(AssocArray *)selector->data_this;
+	
+	// Checking presence of ip attributes and get them if it's well done
+	if(arraysTestIndex(infos,"data",0)<0 || arraysTestIndex(infos,"size",0)<0 ||
+		arraysTestIndex(infos,"iph",0)<0)
+	 	{ arraysFreeArray(infos); return 1; }
+	
+	unsigned char *data=(unsigned char *)arraysGetValue(infos,"data",NULL,0);
+	int size=*((int *)arraysGetValue(infos,"size",NULL,0));
+	IPv4_fields *iph=(IPv4_fields *)arraysGetValue(infos,"iph",NULL,0);
+	
+	// free infos received
+	arraysFreeArray(infos);
+	
+	/* Check ICMP headers */
+	ICMPv4_fields *icmp=(ICMPv4_fields *)data;
+	
+	// Get value of icmp fields
+	unsigned char type = (unsigned char) icmp->type;
+	
+	
+	// TODO: chech that the checksum  = 0;
+	return 0;
 
 
 
@@ -66,9 +90,9 @@ unsigned char icmpSendPacket(EventsEvent *event,EventsSelector *selector){
       arraysTestIndex(infos,"ldst",0)<0 )
   { arraysFreeArray(infos); return 1; } 
 	
-	// Get the ip layer
-	StackLayers *pip=stackFindProtoById(LEVEL_NETWORK,ETHERNET_PROTO_IP);
-	if(pip==NULL || pip->event_out<0){ arraysFreeArray(infos); return 0; }
+	// Get the icmp layer
+	StackLayers *picmp=stackFindProtoById(LEVEL_TRANSPORT,IPV4_PROTOCOL_ICMP);
+	if(picmp==NULL || picmp->event_out<0){ arraysFreeArray(infos); return 0; }
 
   // Get ICMP attributes: type, code, data, ldst
   unsigned char type	=	*(unsigned char *)arraysGetValue(infos,"type",NULL,0); //type
@@ -120,7 +144,7 @@ unsigned char icmpSendPacket(EventsEvent *event,EventsSelector *selector){
 	arraysSetValue(&ip_infos,"data",data,size_icmp,AARRAY_DONT_DUPLICATE);
 	arraysSetValue(&ip_infos,"size",&size_icmp,sizeof(int),0);
 	arraysSetValue(&ip_infos,"opts",ip_options,sizeof(AssocArray *), AARRAY_DONT_DUPLICATE);
-	eventsTrigger(pip->event_out,ip_infos);
+	eventsTrigger(picmp->event_out,ip_infos);
 	
 	return 0;
 }
