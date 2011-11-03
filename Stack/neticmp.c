@@ -42,9 +42,9 @@ void displayICMPv4Packet(FILE *output,ICMPv4_fields *icmp,int size){
 //
 
 unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
-	
+		/*
 	// Get icmp data from the selector
-	AssocArray *infos=(AssocArray *)selector->data_this;
+AssocArray *infos=(AssocArray *)selector->data_this;
 	
 	// Checking presence of ip attributes and get them if it's well done
 	if(arraysTestIndex(infos,"data",0)<0 || arraysTestIndex(infos,"size",0)<0 ||
@@ -58,7 +58,7 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 	// free infos received
 	arraysFreeArray(infos);
 	
-	/* Check ICMP headers */
+	//* Check ICMP headers 
 	ICMPv4_fields *icmp=(ICMPv4_fields *)data;
 	
 	// Get value of icmp fields
@@ -67,7 +67,7 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 	
 	// TODO: chech that the checksum  = 0;
 	return 0;
-
+*/
 
 
 	return 0;
