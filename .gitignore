@@ -1,2 +1,4 @@
 # Ignore object files 
 /*/*.o
+.metadata
+.cproject

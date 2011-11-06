@@ -138,20 +138,20 @@ if(ip->ttl==0){
 		
 		//  Get src address and data of the datagram sent
 		IPv4Address source=ip->source;
-    int reply_size=(IPv4_get_hlength(ip)+3)*4;
-    data=(unsigned char *)realloc(data,reply_size);
-    if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
-    memmove(data,data,reply_size);
+		int reply_size=(IPv4_get_hlength(ip)+3)*4;
+		data=(unsigned char *)realloc(data,reply_size);
+		if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
+		memmove(data,data,reply_size);
     
 
 		// Initialized and set the icmp packet to replay
-    AssocArray *icmp_infos=NULL;
-    arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
-    arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
-    arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
-    arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
-    arraysSetValue(&icmp_infos,"ldst",&source,sizeof(IPv4Address),0);
-    eventsTrigger(picmp->event_out,icmp_infos);
+		AssocArray *icmp_infos=NULL;
+		arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
+		arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
+		arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
+		arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
+		arraysSetValue(&icmp_infos,"ldst",&source,sizeof(IPv4Address),0);
+		eventsTrigger(picmp->event_out,icmp_infos);
   }
 
   free(data); return 0;
