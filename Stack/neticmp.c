@@ -24,17 +24,36 @@
 // Global variables
 ////
 
+#define	MAX_BYTES_BY_ROW	16
+
 ////
 // Functions
 ////
-
+//  unsigned char type;
+//  unsigned char code;
+//  unsigned short int checksum;
+//  unsigned char data[1];
+//  } ICMPv4_fields;
 #ifdef VERBOSE
 //
 // Display ICMPv4 packet
 //
 
 void displayICMPv4Packet(FILE *output,ICMPv4_fields *icmp,int size){
-
+	fprintf(output,"ICMP type: %04x\n",ntohs(icmp->type));
+	fprintf(output,"ICMP code: %04x\n",ntohs(icmp->code));
+	fprintf(output,"ICMP Checksum: %04x\n",ntohs(icmp->checksum));
+	fprintf(output,"ICMP Data:\n  ");
+	int i;
+	int data_size=size-sizeof(ICMPv4_fields)+1;
+	for(i=0;i<data_size;i++){
+	  fprintf(output,"%02hhx ",icmp->data[i]);
+	  if(i%MAX_BYTES_BY_ROW == MAX_BYTES_BY_ROW-1){
+	    fprintf(output,"\n");
+	    if(i<data_size-1) fprintf(output,"  ");
+	    }
+	  }
+	if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"\n");
 }
 #endif
 
@@ -64,6 +83,11 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 
 	// Get value of icmp fields
 	unsigned char type = (unsigned char) icmp->type;
+#ifdef VERBOSE
+	// display the packet received
+	fprintf(stderr,":D Incoming ICMP packet:\n");
+	displayICMPv4Packet(stderr,icmp,size);
+#endif
 
 
 	// Verify the cheksum
@@ -198,6 +222,7 @@ unsigned char icmpSendPacket(EventsEvent *event,EventsSelector *selector){
 	// Set attributes of icmp structure
 	icmp->type 	= type;
 	icmp->code	= code;
+
 	// Compute and set checksum attribute
 	icmp->checksum = 0;
 	unsigned short int checksum=genericChecksum(data,size_icmp);
