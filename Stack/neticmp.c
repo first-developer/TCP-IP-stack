@@ -16,6 +16,7 @@
 
 #include "netether.h"
 #include "netip.h"
+#include "netudp.h"
 #include "neticmp.h"
 #include "stack.h"
 
@@ -83,48 +84,63 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 
 	// Process data depends on Type of packet
 	switch(type) {
-		case ICMPV4_TYPE_ECHO_REQUEST:   // echo request message -> echo reply
+	case ICMPV4_TYPE_ECHO_REQUEST:   // echo request message -> echo reply
 
-			// ----------------------------------------------
-			// Sending the reply message
-			// ----------------------------------------------
+		// ----------------------------------------------
+		// Sending the reply message
+		// ----------------------------------------------
 
-			// Verify if everything work fine after the 'stackFindProtoById' call
-			if(picmp!=NULL && picmp->event_out>=0){
-				// reverse source and destination adresses
-				IPv4Address rev_source = iph->target;
+		// Verify if everything work fine after the 'stackFindProtoById' call
+		if(picmp!=NULL && picmp->event_out>=0){
+			// reverse source and destination adresses
+			IPv4Address rev_source = iph->target;
 
-				// Set type and code  of the reply message
-				unsigned char type = ICMPV4_TYPE_ECHO_REPLY;
-				unsigned char code= ICMPV4_CODE_NONE;
+			// Set type and code  of the reply message
+			unsigned char type = ICMPV4_TYPE_ECHO_REPLY;
+			unsigned char code= ICMPV4_CODE_NONE;
 
-				//  Compute the reply size of packet
-				int reply_size=(IPv4_get_hlength(iph)+3)*4;
+			//  Compute the reply size of packet
+			int reply_size=(IPv4_get_hlength(iph)+3)*4;
 
-				// Make packet fit the right size
-				data=(unsigned char *)realloc(data,reply_size);
-				if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
-				memmove(data,data,reply_size);
+			// Make packet fit the right size
+			data=(unsigned char *)realloc(data,reply_size);
+			if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
+			memmove(data,data,reply_size);
 
 
-				// Initialized and set the icmp packet to replay
-				AssocArray *icmp_infos=NULL;
-				arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
-				arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
-				arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
-				arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
-				arraysSetValue(&icmp_infos,"ldst",&rev_source,sizeof(IPv4Address),0);
-				eventsTrigger(picmp->event_out,icmp_infos);
-			}
-			free(data); return 0;
-			break;
-		case ICMPV4_TYPE_UNREACHABLE:
-			break;
-		default: break;
+			// Initialized and set the icmp packet to replay
+			AssocArray *icmp_infos=NULL;
+			arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
+			arraysSetValue(&icmp_infos,"code",&code,sizeof(unsigned char),0);
+			arraysSetValue(&icmp_infos,"data",data,reply_size,AARRAY_DONT_DUPLICATE);
+			arraysSetValue(&icmp_infos,"size",&reply_size,sizeof(int),0);
+			arraysSetValue(&icmp_infos,"ldst",&rev_source,sizeof(IPv4Address),0);
+			eventsTrigger(picmp->event_out,icmp_infos);
+		}
+		free(data); return 0;
+		break;
+	case ICMPV4_TYPE_UNREACHABLE:
+		if ( icmp->code == 	ICMPV4_UNREACHABLE_CODE_PORT ) {  // port introuvable
+			unsigned char type=PROCESS_ERROR;
+			unsigned char code= ICMPV4_CODE_NONE;
+
+			// set udp_size
+			int size_hdr=sizeof(UDP_fields)-1;
+			int size_data=size-size_hdr;
+			memmove(data,data+size_hdr,size_data);
+			data=(unsigned char *)realloc(data,size_data);
+
+			AssocArray *infos=NULL;
+			arraysSetValue(&infos,"code",&code,sizeof(unsigned char),0);
+			arraysSetValue(&infos,"type",&type,sizeof(unsigned char),0);
+			arraysSetValue(&infos,"data",data,size_data,AARRAY_DONT_DUPLICATE);
+			arraysSetValue(&infos,"size",&size_data,sizeof(int),0);
+			eventsTrigger(picmp->event_out,infos);
+		}
+		free(data); return 0;
+		break;
+	default: break;
 	}
-
-
-
 
 	return 0;
 }
@@ -136,7 +152,7 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 //
 
 unsigned char icmpSendPacket(EventsEvent *event,EventsSelector *selector){
-
+	printf("icmp send packet \n");
 	// Get icmp data from the selector
 	AssocArray *infos=(AssocArray *)selector->data_this;
 
@@ -183,6 +199,7 @@ unsigned char icmpSendPacket(EventsEvent *event,EventsSelector *selector){
 	icmp->type 	= type;
 	icmp->code	= code;
 	// Compute and set checksum attribute
+	icmp->checksum = 0;
 	unsigned short int checksum=genericChecksum(data,size_icmp);
 	icmp = (ICMPv4_fields *)data; 
 	icmp->checksum = checksum;

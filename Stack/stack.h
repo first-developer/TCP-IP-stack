@@ -14,6 +14,7 @@
 #define PROCESS_DATA		1
 #define PROCESS_CONNECT		2
 #define PROCESS_CLOSE		3
+#define PROCESS_ERROR		4
 
 ////
 // Structures

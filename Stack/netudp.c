@@ -130,7 +130,7 @@ if(process==NULL){
     arraysSetValue(&icmp_infos,"size",&size_reply,sizeof(int),0);
     arraysSetValue(&icmp_infos,"ldst",&(iph->source),sizeof(IPv4Address),0);
     eventsTrigger(picmp->event_out,icmp_infos);
-    }
+  }
   else free(data);
   }
 else{

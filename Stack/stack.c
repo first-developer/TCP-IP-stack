@@ -57,7 +57,7 @@ static StackLayers stackLayers[]={
   {LEVEL_NETWORK,ETHERNET_PROTO_IP,ipDecodePacket,ipSendPacket,-1,-1},
   {LEVEL_NETWORK,ETHERNET_PROTO_ARP,arpDecodePacket,arpSendPacket,-1,-1},
   {LEVEL_NETWORK,ETHERNET_PROTO_RARP,arpDecodePacket,arpSendPacket,-1,-1},
-  {LEVEL_TRANSPORT,IPV4_PROTOCOL_ICMP,NULL,NULL,-1,-1},
+  {LEVEL_TRANSPORT,IPV4_PROTOCOL_ICMP,icmpDecodePacket,icmpSendPacket,-1,-1},
   {LEVEL_TRANSPORT,IPV4_PROTOCOL_UDP,udpDecodePacket,udpSendPacket,-1,-1},
   {LEVEL_TRANSPORT,IPV4_PROTOCOL_TCP,NULL,NULL,-1,-1},
   {-1,-1,NULL,NULL,-1,-1}
