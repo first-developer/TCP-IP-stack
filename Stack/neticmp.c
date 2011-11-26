@@ -29,12 +29,9 @@
 ////
 // Functions
 ////
-//  unsigned char type;
-//  unsigned char code;
-//  unsigned short int checksum;
-//  unsigned char data[1];
-//  } ICMPv4_fields;
+
 #ifdef VERBOSE
+
 //
 // Display ICMPv4 packet
 //
@@ -89,20 +86,15 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 	displayICMPv4Packet(stderr,icmp,size);
 #endif
 
+	unsigned short int checksum=genericChecksum(data,size);
 
-	// Verify the cheksum
-	if(icmp->checksum!=0){
-		unsigned short int checksum=pseudoHeaderChecksum(
-				iph->source, iph->target, IPV4_PROTOCOL_ICMP, &data, size);
-		icmp=(ICMPv4_fields *)data;
-		if(checksum!=0){
+	if(checksum!=0){
 #ifdef VERBOSE
-			fprintf(stderr,"ICMP packet: bad checksum\n");
+		fprintf(stderr,"ICMP packet: bad checksum\n");
 #endif
-			free(data); free(iph); return 0;
-		}
+		free(data); free(iph); return 0;
 	}
-
+	
 	// Get the layer related to the sender
 	StackLayers *picmp=stackFindProtoById(LEVEL_TRANSPORT,IPV4_PROTOCOL_ICMP);
 
@@ -117,20 +109,21 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 		// Verify if everything work fine after the 'stackFindProtoById' call
 		if(picmp!=NULL && picmp->event_out>=0){
 			// reverse source and destination adresses
-			IPv4Address rev_source = iph->target;
+			IPv4Address rev_source = iph->source;
 
 			// Set type and code  of the reply message
 			unsigned char type = ICMPV4_TYPE_ECHO_REPLY;
 			unsigned char code= ICMPV4_CODE_NONE;
 
 			//  Compute the reply size of packet
-			int reply_size=(IPv4_get_hlength(iph)+3)*4;
-
+			int size_iph=sizeof(IPv4_fields) -1;  // ip header size
+			int reply_size=size + size_iph;
+			
 			// Make packet fit the right size
 			data=(unsigned char *)realloc(data,reply_size);
 			if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
-			memmove(data,data,reply_size);
-
+			memmove(data + size_iph,data,size); 
+			bzero(data,size_iph); // set the other fields to zero 
 
 			// Initialized and set the icmp packet to replay
 			AssocArray *icmp_infos=NULL;
@@ -146,20 +139,36 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 	case ICMPV4_TYPE_UNREACHABLE:
 		if ( icmp->code == 	ICMPV4_UNREACHABLE_CODE_PORT ) {  // port introuvable
 			unsigned char type=PROCESS_ERROR;
-			unsigned char code= ICMPV4_CODE_NONE;
 
-			// set udp_size
-			int size_hdr=sizeof(UDP_fields)-1;
-			int size_data=size-size_hdr;
-			memmove(data,data+size_hdr,size_data);
-			data=(unsigned char *)realloc(data,size_data);
+			// Get the upd source port 
+			// -------------------------
+			/// Get the ip header(icmp_iph) and udp fields (icmp_udp) inside icmp data
+			IPv4_fields *icmp_iph = (IPv4_fields *)(data + 4);
+			int icmp_iph_size = IPv4_get_hlength(icmp_iph)*4;  // Size of icmp_iph
+			UDP_fields *icmp_udp = (UDP_fields *)(data + 4 + icmp_iph_size);
 
+			// Get Source port from icmp_udp fields
+			unsigned short int psource = ntohs(icmp_udp->source);
+			int psource_net= psource;
+			
+			// Get he process linked to the psource getting previously
+			StackProcess *process=stackFindProcess(IPV4_PROTOCOL_UDP,iph->source,psource);
+
+			// Compute size_data and set data infos to send
+		   	int size_hdr=sizeof(UDP_fields)-1;
+ 			int size_data=size-size_hdr;
+ 			memmove(data,data+size_hdr,size_data);
+ 			data=(unsigned char *)realloc(data,size_data);
+ 	
 			AssocArray *infos=NULL;
-			arraysSetValue(&infos,"code",&code,sizeof(unsigned char),0);
-			arraysSetValue(&infos,"type",&type,sizeof(unsigned char),0);
-			arraysSetValue(&infos,"data",data,size_data,AARRAY_DONT_DUPLICATE);
-			arraysSetValue(&infos,"size",&size_data,sizeof(int),0);
-			eventsTrigger(picmp->event_out,infos);
+ 			arraysSetValue(&infos,"type",&type,sizeof(unsigned char),0);
+ 			arraysSetValue(&infos,"ldst",&iph->target,sizeof(IPv4Address),0); // unused normally ?
+ 			arraysSetValue(&infos,"lsrc",&iph->source,sizeof(IPv4Address),0); // unused normally ?
+ 			arraysSetValue(&infos,"pdst",&psource_net,sizeof(short int),0);
+ 			arraysSetValue(&infos,"psrc",&psource_net,sizeof(short int),0);   // unused normally ?
+ 			arraysSetValue(&infos,"data",data,size_data,AARRAY_DONT_DUPLICATE);
+ 			arraysSetValue(&infos,"size",&size_data,sizeof(int),0);
+ 			eventsTrigger(process->event,infos);
 		}
 		free(data); return 0;
 		break;
@@ -187,17 +196,17 @@ unsigned char icmpSendPacket(EventsEvent *event,EventsSelector *selector){
 	{ arraysFreeArray(infos); return 1; }
 
 	// Get the icmp layer
-	StackLayers *picmp=stackFindProtoById(LEVEL_TRANSPORT,IPV4_PROTOCOL_ICMP);
-	if(picmp==NULL || picmp->event_out<0){ arraysFreeArray(infos); return 0; }
+StackLayers *pip=stackFindProtoById(LEVEL_NETWORK,ETHERNET_PROTO_IP);
+if(pip==NULL || pip->event_out<0){ arraysFreeArray(infos); return 0; }
 
 	// Get ICMP attributes: type, code, data, ldst
 	unsigned char type	=	*(unsigned char *)arraysGetValue(infos,"type",NULL,0); //type
 	unsigned char code	=	*(unsigned char *)arraysGetValue(infos,"code",NULL,0); //code
 	int 	data_size	=	*(int *)arraysGetValue(infos,"size",NULL,0); //size
 	unsigned char *data	=	(unsigned char *)arraysGetValue(infos,"data",NULL,0); //data
-	IPv4_fields 	*ip	=	(IPv4_fields *)arraysGetValue(infos,"ldst", NULL, 0); 	//ldst
-	IPv4Address	 source = 	(IPv4Address) ip->source;  // src adresse related to the error
-	IPv4Address	 target = 	IPV4_ADDRESS_NULL;  // set target adresse to NULL address
+ 	IPv4Address target	=	*((IPv4Address *)arraysGetValue(infos,"ldst", NULL, 0)); 	//ldst
+	
+	IPv4Address	 source = 	IPV4_ADDRESS_NULL;  // set target adresse to NULL address
 
 	// free infos datas
 	arraysFreeArray(infos);
@@ -224,15 +233,15 @@ unsigned char icmpSendPacket(EventsEvent *event,EventsSelector *selector){
 	icmp->code	= code;
 
 	// Compute and set checksum attribute
-	icmp->checksum = 0;
+	// icmp->checksum = 0;
 	unsigned short int checksum=genericChecksum(data,size_icmp);
 	icmp = (ICMPv4_fields *)data; 
 	icmp->checksum = checksum;
 
-	/* TODO: verbose for debugging icmpi */
+	/* TODO: verbose for debugging icmp */
 
 	// Call IP layer
-	unsigned char protocol = IPV4_PROTOCOL_UDP;
+	unsigned char protocol = IPV4_PROTOCOL_ICMP;
 	AssocArray *ip_options = NULL;
 	arraysSetValue(&ip_options,"lsrc",&source,sizeof(IPv4Address),0);
 	//Set ip infos
@@ -242,7 +251,7 @@ unsigned char icmpSendPacket(EventsEvent *event,EventsSelector *selector){
 	arraysSetValue(&ip_infos,"data",data,size_icmp,AARRAY_DONT_DUPLICATE);
 	arraysSetValue(&ip_infos,"size",&size_icmp,sizeof(int),0);
 	arraysSetValue(&ip_infos,"opts",ip_options,sizeof(AssocArray *), AARRAY_DONT_DUPLICATE);
-	eventsTrigger(picmp->event_out,ip_infos);
+	eventsTrigger(pip->event_out,ip_infos);
 
 	return 0;
 }
