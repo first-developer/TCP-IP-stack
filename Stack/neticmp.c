@@ -116,15 +116,14 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 			unsigned char code= ICMPV4_CODE_NONE;
 
 			//  Compute the reply size of packet
-			int size_iph=sizeof(IPv4_fields) -1;  // ip header size
-			int reply_size=size + size_iph;
+			int size_iph=sizeof(ICMPv4_fields) -1;  // ip header size
+			int reply_size=size - size_iph;
 			
 			// Make packet fit the right size
+			memmove(data,data + size_iph,reply_size); 
 			data=(unsigned char *)realloc(data,reply_size);
 			if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
-			memmove(data + size_iph,data,size); 
-			bzero(data,size_iph); // set the other fields to zero 
-
+			
 			// Initialized and set the icmp packet to replay
 			AssocArray *icmp_infos=NULL;
 			arraysSetValue(&icmp_infos,"type",&type,sizeof(unsigned char),0);
@@ -134,7 +133,7 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 			arraysSetValue(&icmp_infos,"ldst",&rev_source,sizeof(IPv4Address),0);
 			eventsTrigger(picmp->event_out,icmp_infos);
 		}
-		free(data); return 0;
+		else free(data);
 		break;
 	case ICMPV4_TYPE_UNREACHABLE:
 		if ( icmp->code == 	ICMPV4_UNREACHABLE_CODE_PORT ) {  // port introuvable
@@ -149,8 +148,9 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 
 			// Get Source port from icmp_udp fields
 			unsigned short int psource = ntohs(icmp_udp->source);
-			int psource_net= psource;
-			
+
+			int psource_net= icmp_udp->source;
+
 			// Get he process linked to the psource getting previously
 			StackProcess *process=stackFindProcess(IPV4_PROTOCOL_UDP,iph->source,psource);
 
@@ -170,11 +170,11 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
  			arraysSetValue(&infos,"size",&size_data,sizeof(int),0);
  			eventsTrigger(process->event,infos);
 		}
-		free(data); return 0;
+		else free(data);
 		break;
 	default: break;
 	}
-
+	free(iph);
 	return 0;
 }
 
@@ -196,8 +196,8 @@ unsigned char icmpSendPacket(EventsEvent *event,EventsSelector *selector){
 	{ arraysFreeArray(infos); return 1; }
 
 	// Get the icmp layer
-StackLayers *pip=stackFindProtoById(LEVEL_NETWORK,ETHERNET_PROTO_IP);
-if(pip==NULL || pip->event_out<0){ arraysFreeArray(infos); return 0; }
+	StackLayers *pip=stackFindProtoById(LEVEL_NETWORK,ETHERNET_PROTO_IP);
+	if(pip==NULL || pip->event_out<0){ arraysFreeArray(infos); return 0; }
 
 	// Get ICMP attributes: type, code, data, ldst
 	unsigned char type	=	*(unsigned char *)arraysGetValue(infos,"type",NULL,0); //type
@@ -206,10 +206,12 @@ if(pip==NULL || pip->event_out<0){ arraysFreeArray(infos); return 0; }
 	unsigned char *data	=	(unsigned char *)arraysGetValue(infos,"data",NULL,0); //data
  	IPv4Address target	=	*((IPv4Address *)arraysGetValue(infos,"ldst", NULL, 0)); 	//ldst
 	
-	IPv4Address	 source = 	IPV4_ADDRESS_NULL;  // set target adresse to NULL address
-
 	// free infos datas
 	arraysFreeArray(infos);
+
+	IPv4Address	 source = 	IPV4_ADDRESS_NULL;  // set target adresse to NULL address
+	EthernetInterface *device=stackFindDeviceByIPv4Network(target);
+	if(device!=NULL) source=device->IPv4[0].address;
 
 	// Fill ICMP Header 
 	// -----------------------------------------------------------------------
@@ -221,7 +223,7 @@ if(pip==NULL || pip->event_out<0){ arraysFreeArray(infos); return 0; }
 	data=(unsigned char *) realloc(data, size_icmp);
 	if (data == NULL) { perror("icmpSendPacket.realloc"); return 1; }
 
-	// put icmp_ header before icmp data
+	// put icmp_header before icmp data
 	memmove(data+size_hicmp,data,data_size);
 	bzero(data,size_hicmp);  // fill icmp header with zero
 
@@ -236,7 +238,7 @@ if(pip==NULL || pip->event_out<0){ arraysFreeArray(infos); return 0; }
 	// icmp->checksum = 0;
 	unsigned short int checksum=genericChecksum(data,size_icmp);
 	icmp = (ICMPv4_fields *)data; 
-	icmp->checksum = checksum;
+	icmp->checksum = htons(checksum);
 
 	/* TODO: verbose for debugging icmp */
 
