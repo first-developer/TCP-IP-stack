@@ -2,7 +2,7 @@
 # Makefile for virtual stack executable
 #
 
-OBJS = netether.o netarp.o netip.o neticmp.o netudp.o processes.o stack.o
+OBJS = netether.o netarp.o netip.o neticmp.o netudp.o nettcp.o processes.o stack.o 
 LIBS = -L ../Arrays -L ../Events -L ../NetTAP -larrays -levents -ltap
 CFLAGS += -I ../Arrays -I ../Events -I ../NetTAP
 
