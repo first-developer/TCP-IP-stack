@@ -102,7 +102,7 @@ unsigned char tcpDecodePacket(EventsEvent *event,EventsSelector *selector){
 	//memmove(data);
 	TCP_header_fields *tcph = (TCP_header_fields *) data;
 
-	fprintf(stderr,"%s\n<<<<<   Incoming TCP packet:%s   <<<<<\n", BGREEN, BLACK);
+	fprintf(stderr,"%s\n<<<<<   Incoming TCP packet:   <<<<<%s\n", BGREEN, BLACK);
 	displayTCPPacket(stderr, tcph, size);
 	return 0;
 }

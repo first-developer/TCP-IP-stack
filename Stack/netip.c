@@ -172,7 +172,7 @@ if(!ipCompare(ip->target,IPV4_ADDRESS_BROADCAST) &&
   }
 #ifdef VERBOSE
 /* TODO: handle fragments */
-fprintf(stderr,"%s<<<<<  Incoming IP packet:  <<<<<%s\n", BGREEN, BLACK);
+fprintf(stderr,"\n%s<<<<<  Incoming IP packet:  <<<<<%s\n", BGREEN, BLACK);
 displayIPv4Packet(stderr,ip,size);
 #endif
 int size_data=size;
