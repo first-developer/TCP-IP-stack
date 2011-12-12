@@ -53,20 +53,20 @@
 //
 
 void displayTCPPacket(FILE *output, TCP_header_fields *tcph, int size){
-	fprintf(output, "TCP Port source: %04x\n", ntohs(tcph->tcph_source));
-	fprintf(output, "TCP Port target: %04x\n", ntohs(tcph->tcph_target));
-	fprintf(output, "TCP SEQ:         %d\n"	 , tcph->tcph_flags_CWR);
-	fprintf(output, "TCP ACK:         %d\n"  , tcph->tcph_flags_CWR);
-	fprintf(output, "TCP Window: 	  %04x\n", tcph->tcph_window);  
-	fprintf(output,	"TCP Checksum: 	  %04x\n", ntohs(tcph->tcph_checksum));
-	fprintf(output, "TCP Urgent:	  %04x\n", tcph->tcph_urgptr);  
+	fprintf(output, "%sTCP Port source: %s%04x\n", BLUE, BLACK, ntohs(tcph->tcph_source));
+	fprintf(output, "%sTCP Port target: %s%04x\n", BLUE, BLACK, ntohs(tcph->tcph_target));
+	fprintf(output, "%sTCP SEQ: %s%d  	\n", BLUE, BLACK, tcph->tcph_flags_CWR		   );
+	fprintf(output, "%sTCP ACK: %s%d  	\n", BLUE, BLACK, tcph->tcph_flags_CWR		   );
+	fprintf(output, "%sTCP Window: %s%04x	\n", BLUE, BLACK, tcph->tcph_window		 	);  
+	fprintf(output,	"%sTCP Checksum: %s%04x	\n", BLUE, BLACK, ntohs(tcph->tcph_checksum)  );
+	fprintf(output, "%sTCP Urgent: %s%04x	\n", BLUE, BLACK, tcph->tcph_urgptr		    );  
 	display_tcph_flags(tcph);  		  // affichage des flags
 
 	// Get options according to the option type
 	TCP_options_fields *tcp_options = (TCP_options_fields *)tcph->options;
 	display_tcp_options(output, tcp_options);  // Display options
 
-	fprintf(output,"TCP Data:\n  ");
+	fprintf(output,"%sTCP Data:%s\n", BLUE, BBLACK);
 	int i;
 	int data_size=size-sizeof(unsigned int)+1;		/* uint32_t(32bits)  for options */
 	for(i=0;i<data_size;i++){
@@ -76,7 +76,7 @@ void displayTCPPacket(FILE *output, TCP_header_fields *tcph, int size){
 	    if(i<data_size-1) fprintf(output,"  ");
 	    }
 	  }
-	if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"\n");
+	if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"%s\n", BLACK);
 }
 #endif
 
@@ -102,7 +102,7 @@ unsigned char tcpDecodePacket(EventsEvent *event,EventsSelector *selector){
 	//memmove(data);
 	TCP_header_fields *tcph = (TCP_header_fields *) data;
 
-	fprintf(stderr,":D Incoming TCP packet:\n");
+	fprintf(stderr,"%s\n<<<<<   Incoming TCP packet:%s   <<<<<\n", BGREEN, BLACK);
 	displayTCPPacket(stderr, tcph, size);
 	return 0;
 }
@@ -135,14 +135,14 @@ unsigned char tcpSendPacket(EventsEvent *event,EventsSelector *selector){
 
 // Display content of tcp option fields
 void display_tcp_options(FILE *output, TCP_options_fields *tcpo) {	
-	fprintf(output,"TCP Option:\n  ");
+	fprintf(output,"%sTCP Option:%s\n ", BLUE, BLACK);
 	if ( tcpo->tcpo_length > 0 ) {
-		fprintf( output, " TCP_option Type:   	  %d\n", 	tcpo->tcpo_type);
-		fprintf( output, " TCP_option Length:  	  %d\n", 	tcpo->tcpo_length);
-		fprintf( output, " TCP_option Data:	  	  %04x\n", 	tcpo->tcpo_data);
+		fprintf( output, "%sTCP_option Type: %s%d  \n", BLUE, BLACK, tcpo->tcpo_type  );
+		fprintf( output, "%sTCP_option Length: %s%d  \n", BLUE, BLACK, tcpo->tcpo_length);
+		fprintf( output, "%sTCP_option Data: %s%04x\n", BLUE, BLACK, tcpo->tcpo_data);
 	}
-	else {
-		fprintf( output, " TCP_option Type:   	  %d\n", 	tcpo->tcpo_type);
+	else {	
+		fprintf( output, "%sTCP_option Type: %s%d\n", BLUE, BLACK, tcpo->tcpo_type);
 	}
 }
 
@@ -161,14 +161,14 @@ void init_tcph_lags( TCP_header_fields* tcph) {
 }
 
 void display_tcph_flags(TCP_header_fields* t) {
-  printf(" tcph->flags[CWR] = %d\n",t->tcph_flags_CWR);     //
-  printf(" tcph->flags[ECE] = %d\n",t->tcph_flags_ECE);     //
-  printf(" tcph->flags[URG] = %d\n",t->tcph_flags_URG);     //   
-  printf(" tcph->flags[ACK] = %d\n",t->tcph_flags_ACK);     //    TCP HEADER FLAGS (8 bits)
-  printf(" tcph->flags[PSH] = %d\n",t->tcph_flags_PSH);     //
-  printf(" tcph->flags[RST] = %d\n",t->tcph_flags_RST);     //
-  printf(" tcph->flags[SYN] = %d\n",t->tcph_flags_SYN);     //
-  printf(" tcph->flags[FIN] = %d\n",t->tcph_flags_FIN); 	//
+  printf(" %stcph->flags[CWR] = %s%d\n", BLUE, BLACK, t->tcph_flags_CWR );     //
+  printf(" %stcph->flags[ECE] = %s%d\n", BLUE, BLACK, t->tcph_flags_ECE );     //
+  printf(" %stcph->flags[URG] = %s%d\n", BLUE, BLACK, t->tcph_flags_URG );     //   
+  printf(" %stcph->flags[ACK] = %s%d\n", BLUE, BLACK, t->tcph_flags_ACK );     //    TCP HEADER FLAGS (8 bits)
+  printf(" %stcph->flags[PSH] = %s%d\n", BLUE, BLACK, t->tcph_flags_PSH );     //
+  printf(" %stcph->flags[RST] = %s%d\n", BLUE, BLACK, t->tcph_flags_RST );     //
+  printf(" %stcph->flags[SYN] = %s%d\n", BLUE, BLACK, t->tcph_flags_SYN );     //
+  printf(" %stcph->flags[FIN] = %s%d\n", BLUE, BLACK, t->tcph_flags_FIN ); 	   //
 }
 
 // set the flag to 1 depends on our needs

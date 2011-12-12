@@ -6,15 +6,32 @@
 // Constants
 ////
 
-#define LEVEL_LINK		2
-#define LEVEL_NETWORK		3
-#define LEVEL_TRANSPORT		4
+#define LEVEL_LINK		     2
+#define LEVEL_NETWORK		   3
+#define LEVEL_TRANSPORT		 4
 
-#define PROCESS_INIT		0
-#define PROCESS_DATA		1
-#define PROCESS_CONNECT		2
-#define PROCESS_CLOSE		3
-#define PROCESS_ERROR		4
+#define PROCESS_INIT		   0
+#define PROCESS_DATA		   1
+#define PROCESS_CONNECT		 2
+#define PROCESS_CLOSE		   3
+#define PROCESS_ERROR		   4
+
+// COLORS
+// ========
+
+#define BLACK   "\033[0;30m"
+#define BLUE    "\033[0;34m"
+#define GREEN   "\033[0;32m"
+#define YELLOW  "\033[0;33m"
+#define RED     "\033[0;31m"  
+#define MAGENTA "\033[0;35m" 
+#define BBLACK   "\033[1;30m"
+#define BBLUE    "\033[1;34m"
+#define BGREEN   "\033[1;32m"
+#define BYELLOW  "\033[1;33m"
+#define BRED     "\033[1;31m"  
+#define BMAGENTA "\033[1;35m"  
+
 
 ////
 // Structures
@@ -79,3 +96,6 @@ StackProcess *stackFindProcess(
   unsigned char protocol,IPv4Address address,short int port);
 unsigned char stackUDPSendDatagram(
   IPv4Address to_ip,short int to_port,unsigned char *data,int size);
+
+
+

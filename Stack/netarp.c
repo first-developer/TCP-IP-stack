@@ -51,13 +51,13 @@ switch(opcode){
   case RARP_OPCODE_REQUEST: opname="reverse request"; break;
   case RARP_OPCODE_ANSWER: opname="reverse answer"; break;
   }
-fprintf(stderr,"ARP Operation: %s\n",opname);
-fprintf(stderr,"ARP Sender Ethernet Address: %s\n",
-                ethernetAddress2String(eth_sender));
-fprintf(stderr,"ARP Sender IPv4 Address: %s\n",ipAddress2String(ipv4_sender));
-fprintf(stderr,"ARP Target Ethernet Address: %s\n",
-                ethernetAddress2String(eth_target));
-fprintf(stderr,"ARP Target IPv4 Address: %s\n",ipAddress2String(ipv4_target));
+fprintf(stderr,"%sARP Operation: %s%s\n", BLUE, opname, BLACK);
+fprintf(stderr,"%sARP Sender Ethernet Address: %s%s\n", BLUE,
+                ethernetAddress2String(eth_sender),BLACK );
+fprintf(stderr,"%sARP Sender IPv4 Address: %s%s\n", BLUE, ipAddress2String(ipv4_sender), BLACK);
+fprintf(stderr,"%sARP Target Ethernet Address: %s%s\n", BLUE,
+                ethernetAddress2String(eth_target), BLACK);
+fprintf(stderr,"%sARP Target IPv4 Address: %s%s\n",BLUE, ipAddress2String(ipv4_target), BLACK);
 }
 #endif
 
@@ -67,7 +67,7 @@ fprintf(stderr,"ARP Target IPv4 Address: %s\n",ipAddress2String(ipv4_target));
 
 unsigned char arpDecodePacket(EventsEvent *event,EventsSelector *selector){
 AssocArray *infos=(AssocArray *)selector->data_this;
-if(arraysTestIndex(infos,"data",0)<0 || arraysTestIndex(infos,"size",0)<0)
+if(arraysTestIndex(infos,"data",0)<0 || arraysTestIndex(infos, "size",0)<0)
   { arraysFreeArray(infos); return 1; }
 unsigned char *data=(unsigned char *)arraysGetValue(infos,"data",NULL,0);
 int data_size=*((int *)arraysGetValue(infos,"size",NULL,0));
@@ -79,7 +79,7 @@ if(ntohs(fields->hw_type)!=ARP_HW_TYPE_ETHERNET ||
    ntohs(fields->proto_type)!=ARP_PROTO_TYPE_IPV4)
   { free(data); return 0; }
 #ifdef VERBOSE
-fprintf(stderr,"Incoming (R)ARP packet:\n");
+fprintf(stderr,"\n%s<<<<<   Incoming (R)ARP packet: <<<<< %s\n", BGREEN, BLACK);
 displayARPPacket(stderr,fields,data_size);
 #endif
 EthernetAddress eth_sender,eth_target;
@@ -173,7 +173,7 @@ offset += ETHERNET_ADDRESS_SIZE;
 ipAddress2Array(ldst,packet+offset);
 offset += IPV4_ADDRESS_SIZE;
 #ifdef VERBOSE
-fprintf(stderr,"Outgoing ARP packet:\n");
+fprintf(stderr,"\n %s>>>>>   Outgoing ARP packet:>>>>>%s\n", BMAGENTA, BLACK);
 displayARPPacket(stderr,fields,offset);
 #endif
 EthernetAddress edst=mdst;
@@ -203,7 +203,7 @@ for(i=0;i<cache->size;i++){
   int delta=now-cache->entries[i].timestamp;
   char *ip=ipAddress2String(cache->entries[i].ipv4);
   char *ether=ethernetAddress2String(cache->entries[i].ethernet);
-  fprintf(output,"%s at %s (age=%ds)\n",ip,ether,delta);
+  fprintf(output,"%s%s at %s (age=%ds)%s\n",BLUE, ip,ether,delta, BLACK);
   }
 }
 #endif
@@ -254,7 +254,7 @@ if(i>=cache->allocated){
   cache->entries=
     (ARP_cache_entry *)realloc(cache->entries,
                                cache->allocated*sizeof(ARP_cache_entry));
-  if(cache->entries==NULL){ perror("arpAddToCache.realloc"); exit(-1); }
+  if(cache->entries==NULL){ printf("%s", RED);perror("arpAddToCache.realloc"); printf("%s", BLACK);exit(-1); }
   }
 cache->entries[i].ipv4=ip;
 cache->entries[i].ethernet=ether;

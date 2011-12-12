@@ -48,26 +48,26 @@ int hlength=4*IPv4_get_hlength(ip);
 unsigned char *options=ip->options;
 unsigned char *start=(unsigned char *)ip;
 unsigned char *data=start+hlength;
-fprintf(output,"IPv4 Version: %d\n",IPv4_get_version(ip));
-fprintf(output,"IPv4 Header length: %d bytes\n",hlength);
-fprintf(output,"IPv4 Services: %02hhx\n",ip->diffserv);
-fprintf(output,"IPv4 Packet length: %d bytes\n",ntohs(ip->length));
-fprintf(output,"IPv4 Fragmentation: id=%02x, ",ip->id);
-fprintf(output,"flags=%01x, ",IPv4_get_flags(ip));
-fprintf(output,"offset=%d\n",IPv4_get_offset(ip));
-fprintf(output,"IPv4 Time to live: %01x\n",ip->ttl);
-fprintf(output,"IPv4 Protocol: %02x\n",ip->protocol);
-fprintf(output,"IPv4 Checksum: %04x\n",ntohs(ip->checksum));
-fprintf(output,"IPv4 Source: %s\n",ipAddress2String(ip->source));
-fprintf(output,"IPv4 Target: %s\n",ipAddress2String(ip->target));
+fprintf(output,"%sIPv4 Version: %s%d\n", BLUE, BLACK, IPv4_get_version(ip));
+fprintf(output,"%sIPv4 Header length: %s%d bytes\n", BLUE, BLACK, hlength);
+fprintf(output,"%sIPv4 Services: %s%02hhx\n", BLUE, BLACK, ip->diffserv);
+fprintf(output,"%sIPv4 Packet length: %s%d bytes\n", BLUE, BLACK, ntohs(ip->length));
+fprintf(output,"%sIPv4 Fragmentation: %sid=%02x, ", BLUE, BLACK, ip->id);
+fprintf(output,"%sflags=%s%01x, ", BLUE, BLACK, IPv4_get_flags(ip));
+fprintf(output,"%soffset=%s%d\n", BLUE, BLACK, IPv4_get_offset(ip));
+fprintf(output,"%sIPv4 Time to live: %s%01x\n", BLUE, BLACK, ip->ttl);
+fprintf(output,"%sIPv4 Protocol: %s%02x\n", BLUE, BLACK, ip->protocol);
+fprintf(output,"%sIPv4 Checksum: %s%04x\n", BLUE, BLACK, ntohs(ip->checksum));
+fprintf(output,"%sIPv4 Source: %s%s\n", BLUE, BLACK, ipAddress2String(ip->source));
+fprintf(output,"%sIPv4 Target: %s%s\n", BLUE, BLACK, ipAddress2String(ip->target));
 for(start=options;start<data;){
   IPv4_option_fields *option=(IPv4_option_fields *)start;
   if(option->code<2){
-    fprintf(output,"IPv4 Option #%d\n",option->code);
+    fprintf(output,"%sIPv4 Option%s #%d\n",  BLUE, BLACK, option->code);
     start++;
     }
   else{
-    fprintf(output,"IPv4 Option #%d (length=%d)\n",
+    fprintf(output,"%sIPv4 Option %s #%d (length=%d)\n", BLUE, BBLACK, 
                     option->code,option->length);
     if(option->length>2) fprintf(output,"  ");
     int i;
@@ -78,11 +78,11 @@ for(start=options;start<data;){
         if(i<option->length-1) fprintf(output,"  ");
         }
       }
-    if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"\n");
+    if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"%s\n", BLACK);
     start += option->length;
     }
   }
-fprintf(output,"IPv4 Data:\n");
+fprintf(output,"%sIPv4 Data:%s\n", BLUE, BBLACK );
 int i;
 int size_data=ntohs(ip->length)-hlength;
 if(size_data>0) fprintf(output,"  ");
@@ -93,7 +93,7 @@ for(i=0;i<size_data;i++){
     if(i<size_data-1) fprintf(output,"  ");
     }
   }
-if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"\n");
+if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"%s\n", BLACK);
 }
 #endif
 
@@ -112,13 +112,13 @@ IPv4_fields *ip=(IPv4_fields *)data;
 unsigned short int checksum=genericChecksum(data,4*IPv4_get_hlength(ip));
 if(checksum!=0){
 #ifdef VERBOSE
-  fprintf(stderr,"IP packet: bad checksum !\n");
+  fprintf(stderr,"%sIP packet: bad checksum !%s\n", RED, BLACK);
 #endif
   free(data); return 0;
   }
 if(ip->ttl==0){
 #ifdef VERBOSE
-  fprintf(stderr,"IP packet: null TTL !\n");
+  fprintf(stderr,"%sIP packet: null TTL !%s\n", RED, BLACK);
 #endif	
 	// ------------------------------------------------------------------
 	// Sending ICMP Time exceeded packet to the sender if ip->ttl == 0 
@@ -140,7 +140,7 @@ if(ip->ttl==0){
 		IPv4Address source=ip->source;
 		int reply_size=(IPv4_get_hlength(ip)+3)*4;
 		data=(unsigned char *)realloc(data,reply_size);
-		if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
+		if(data==NULL){ printf("%s", RED);perror("ipDecodePacket.realloc"); printf("%s", BLACK); return 1; }
 		memmove(data,data,reply_size);
     
 
@@ -158,7 +158,7 @@ if(ip->ttl==0){
   }
 if(ntohs(ip->length)!=size){
 #ifdef VERBOSE
-  fprintf(stderr,"IP packet: bad size !\n");
+  fprintf(stderr,"%sIP packet: bad size !%s\n", RED, BLACK);
 #endif
   free(data); return 0;
   }
@@ -166,13 +166,13 @@ if(!ipCompare(ip->target,IPV4_ADDRESS_BROADCAST) &&
    stackFindDeviceByIPv4Broadcast(ip->target)!=NULL &&
    stackFindDeviceByIPv4(ip->target)!=NULL){
 #ifdef VERBOSE
-  fprintf(stderr,"IP packet: not for us !\n");
+  fprintf(stderr,"%sIP packet: not for us !%s\n", RED, BLACK);
 #endif
   free(data); return 0;
   }
 #ifdef VERBOSE
 /* TODO: handle fragments */
-fprintf(stderr,"Incoming IP packet:\n");
+fprintf(stderr,"%s<<<<<  Incoming IP packet:  <<<<<%s\n", BGREEN, BLACK);
 displayIPv4Packet(stderr,ip,size);
 #endif
 int size_data=size;
@@ -184,7 +184,7 @@ if(layer!=NULL && layer->event_in>=0){
   size_data=size-size_header;
   memmove(data,data+size_header,size_data);
   data=(unsigned char *)realloc(data,size_data);
-  if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
+  if(data==NULL){ printf("%s", RED);perror("ipDecodePacket.realloc");printf("%s", BLACK); return 1; }
   AssocArray *infos=NULL;
   arraysSetValue(&infos,"data",data,size_data,AARRAY_DONT_DUPLICATE);
   arraysSetValue(&infos,"size",&size_data,sizeof(int),0);
@@ -199,7 +199,7 @@ else{
     IPv4Address source=ip->source;
     int reply_size=(IPv4_get_hlength(ip)+3)*4;
     data=(unsigned char *)realloc(data,reply_size);
-    if(data==NULL){ perror("ipDecodePacket.realloc"); return 1; }
+    if(data==NULL){printf("%s", RED); perror("ipDecodePacket.realloc");printf("%s", BLACK); return 1; }
     memmove(data+4,data,reply_size-4);
     bzero(data,4);
     AssocArray *icmp_infos=NULL;
@@ -308,13 +308,13 @@ if(ethernetCompare(ether_target,ETHERNET_ADDRESS_NULL)){
     arraysSetValue(&infos,"try",&retrans,sizeof(int),0);
     eventsSchedule(event->identity,IPV4_RETRANS_WAIT_TIME,infos);
 #ifdef VERBOSE
-    fprintf(stderr,"Queued IP packet to %s.\n",ipAddress2String(ipv4_target));
+    fprintf(stderr,"%sQueued IP packet to %s%s.\n",MAGENTA , ipAddress2String(ipv4_target) ,BLACK);
 #endif
     }
   else{
 #ifdef VERBOSE
-    fprintf(stderr,"Destroyed IP packet to %s\n",ipAddress2String(ipv4_target));
-    fprintf(stderr,"  -> retransmitted %d times.\n",retrans+1);
+    fprintf(stderr,"%sDestroyed IP packet to %s%s\n", MAGENTA, ipAddress2String(ipv4_target), BLACK);
+    fprintf(stderr,"%s  -> retransmitted %d times.%s\n", BLUE, retrans+1, BLACK);
 #endif
     free(data); arraysFreeArray(options); arraysFreeArray(infos);
     }
@@ -331,7 +331,7 @@ arraysSetValue(&headers,"size",&size_data,sizeof(int),0);
 int size=ipFillHeader(&data,headers,options);
 if(size<0) return 1;
 #ifdef VERBOSE
-fprintf(stderr,"Outgoing IP packet:\n");
+fprintf(stderr,"\n%s>>>>>  Outgoing IP packet:  >>>>>%s\n", BMAGENTA, BLACK);
 displayIPv4Packet(stderr,(IPv4_fields *)data,size);
 #endif
 
@@ -466,7 +466,7 @@ unsigned short int pseudoHeaderChecksum(
 int size_phdr=sizeof(IPv4_pseudo_header);
 int size_total=size+size_phdr;
 *bytes=(unsigned char *)realloc(*bytes,size_total);
-if(*bytes==NULL){ perror("pseudoHeaderChecksum.realloc"); exit(-1); }
+if(*bytes==NULL){ printf("%s", RED);perror("pseudoHeaderChecksum.realloc"); printf("%s", BLACK);exit(-1); }
 memmove(*bytes+size_phdr,*bytes,size);
 IPv4_pseudo_header *pheader=(IPv4_pseudo_header *)*bytes;
 pheader->source=source;
@@ -477,6 +477,6 @@ pheader->length=htons((short int)size);
 unsigned short int checksum=genericChecksum(*bytes,size_total);
 memmove(*bytes,*bytes+size_phdr,size);
 *bytes=(unsigned char *)realloc(*bytes,size);
-if(*bytes==NULL){ perror("pseudoHeaderChecksum.realloc"); exit(-1); }
+if(*bytes==NULL){ printf("%s", RED);perror("pseudoHeaderChecksum.realloc"); printf("%s", BLACK);exit(-1); }
 return checksum;
 }

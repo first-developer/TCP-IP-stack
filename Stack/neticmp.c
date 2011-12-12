@@ -37,10 +37,10 @@
 //
 
 void displayICMPv4Packet(FILE *output,ICMPv4_fields *icmp,int size){
-	fprintf(output,"ICMP type: %04x\n",ntohs(icmp->type));
-	fprintf(output,"ICMP code: %04x\n",ntohs(icmp->code));
-	fprintf(output,"ICMP Checksum: %04x\n",ntohs(icmp->checksum));
-	fprintf(output,"ICMP Data:\n  ");
+	fprintf(output,"%sICMP type: %s%04x\n", BLUE, BLACK, ntohs(icmp->type));
+	fprintf(output,"%sICMP code: %s%04x\n", BLUE, BLACK, ntohs(icmp->code));
+	fprintf(output,"%sICMP Checksum: %s%04x\n", BLUE, BLACK, ntohs(icmp->checksum));
+	fprintf(output,"%sICMP Data:%s\n  ", BLUE,BBLACK );
 	int i;
 	int data_size=size-sizeof(ICMPv4_fields)+1;
 	for(i=0;i<data_size;i++){
@@ -50,7 +50,7 @@ void displayICMPv4Packet(FILE *output,ICMPv4_fields *icmp,int size){
 	    if(i<data_size-1) fprintf(output,"  ");
 	    }
 	  }
-	if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"\n");
+	if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"%s\n", BLACK);
 }
 #endif
 
@@ -82,7 +82,7 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 	unsigned char type = (unsigned char) icmp->type;
 #ifdef VERBOSE
 	// display the packet received
-	fprintf(stderr,":D Incoming ICMP packet:\n");
+	fprintf(stderr,"\n%s<<<<<  Incoming ICMP packet:  <<<<<%s\n", BGREEN, BLACK);
 	displayICMPv4Packet(stderr,icmp,size);
 #endif
 
@@ -90,7 +90,7 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 
 	if(checksum!=0){
 #ifdef VERBOSE
-		fprintf(stderr,"ICMP packet: bad checksum\n");
+		fprintf(stderr,"%sICMP packet: bad checksum%s\n", RED, BLACK);
 #endif
 		free(data); free(iph); return 0;
 	}
@@ -185,7 +185,6 @@ unsigned char icmpDecodePacket(EventsEvent *event,EventsSelector *selector){
 //
 
 unsigned char icmpSendPacket(EventsEvent *event,EventsSelector *selector){
-	printf("icmp send packet \n");
 	// Get icmp data from the selector
 	AssocArray *infos=(AssocArray *)selector->data_this;
 
@@ -240,7 +239,11 @@ unsigned char icmpSendPacket(EventsEvent *event,EventsSelector *selector){
 	icmp = (ICMPv4_fields *)data; 
 	icmp->checksum = htons(checksum);
 
-	/* TODO: verbose for debugging icmp */
+#ifdef VERBOSE
+	fprintf(stderr,"\n%s>>>>>  Outgoing ICMP packet:  >>>>>%s\n", BMAGENTA, BLACK);
+	displayICMPv4Packet(stderr,icmp,size_icmp);
+#endif
+
 
 	// Call IP layer
 	unsigned char protocol = IPV4_PROTOCOL_ICMP;

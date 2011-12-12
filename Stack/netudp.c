@@ -35,20 +35,20 @@
 
 #define	MAX_BYTES_BY_ROW	16
 void displayUDPPacket(FILE *output,UDP_fields *udp,int size){
-fprintf(output,"UDP Port source: %04x\n",ntohs(udp->source));
-fprintf(output,"UDP Port target: %04x\n",ntohs(udp->target));
-fprintf(output,"UDP Checksum: %04x\n",ntohs(udp->checksum));
-fprintf(output,"UDP Data:\n  ");
+fprintf(output,"%sUDP Port source: %s%04x\n",BLUE, BLACK, ntohs(udp->source));
+fprintf(output,"%sUDP Port target: %s%04x\n",BLUE, BLACK, ntohs(udp->target));
+fprintf(output,"%sUDP Checksum: %s%04x\n",   BLUE, BLACK, ntohs(udp->checksum));
+fprintf(output,"%sUDP Data:%s\n  ", BLUE, BBLACK);
 int i;
 int data_size=size-sizeof(UDP_fields)+1;
 for(i=0;i<data_size;i++){
-  fprintf(output,"%02hhx ",udp->data[i]);
+  fprintf(output,"%02hhx ", udp->data[i]);
   if(i%MAX_BYTES_BY_ROW == MAX_BYTES_BY_ROW-1){
     fprintf(output,"\n");
     if(i<data_size-1) fprintf(output,"  ");
     }
   }
-if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"\n");
+if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"%s\n", BLACK);
 }
 #endif
 
@@ -71,7 +71,7 @@ arraysFreeArray(infos);
 UDP_fields *udp=(UDP_fields *)data;
 if(ntohs(udp->length)!=size){
 #ifdef VERBOSE
-  fprintf(stderr,"UDP packet: bad length\n");
+  fprintf(stderr,"\n%sUDP packet: bad length%s\n", GREEN, BLACK);
 #endif
   free(data); free(iph); return 0;
   }
@@ -81,7 +81,7 @@ if(udp->checksum!=0){
   udp=(UDP_fields *)data;
   if(checksum!=0){
 #ifdef VERBOSE
-    fprintf(stderr,"UDP packet: bad checksum\n");
+    fprintf(stderr,"%sUDP packet: bad checksum%s\n", RED, BLACK);
 #endif
     free(data); free(iph); return 0;
     }
@@ -92,18 +92,18 @@ int psource=ntohs(udp->source);
 int ptarget=ntohs(udp->target);
 if(psource==0){
 #ifdef VERBOSE
-  fprintf(stderr,"UDP packet: bad source port\n");
+  fprintf(stderr,"%sUDP packet: bad source port\n%s", RED, BLACK);
 #endif
   free(data); free(iph); return 0;
   }
 if(ptarget==0){
 #ifdef VERBOSE
-  fprintf(stderr,"UDP packet: bad destination port\n");
+  fprintf(stderr,"%sUDP packet: bad destination port%s\n", RED, BLACK);
 #endif
   free(data); free(iph); return 0;
   }
 #ifdef VERBOSE
-fprintf(stderr,"Incoming UDP packet:\n");
+fprintf(stderr,"\n%s<<<<<  Incoming UDP packet:   <<<<< %s\n", BGREEN, BLACK);
 displayUDPPacket(stderr,udp,size);
 #endif
 
@@ -119,7 +119,7 @@ if(process==NULL){
     int size_hudp=2*4;
     int size_reply=4+size_iph+size_hudp;
     data=(unsigned char *)realloc(data,size_reply);
-    if(data==NULL){ perror("udpDecodePacket.realloc"); return 1; }
+    if(data==NULL){ printf("%s",RED);perror("%sudpDecodePacket.realloc%s");printf("%s",BLACK); return 1; }
     memmove(data+4+size_iph,data,size_hudp);
     memcpy(data+4,iph,size_iph);
     bzero(data,4);
@@ -180,7 +180,7 @@ if(device!=NULL) source=device->IPv4[0].address;
 int size_hudp=sizeof(UDP_fields)-1;
 int size_udp=size_data+size_hudp;
 data=(unsigned char *)realloc(data,size_udp);
-if(data==NULL){ perror("udpSendPacket.realloc"); return 1; }
+if(data==NULL){ printf("%s",RED);perror("%sudpSendPacket.realloc");printf("%s",BLACK); return 1; }
 memmove(data+size_hudp,data,size_data);
 bzero(data,size_hudp);
 UDP_fields *udp=(UDP_fields *)data;
@@ -192,7 +192,7 @@ unsigned short int checksum=pseudoHeaderChecksum(
 udp=(UDP_fields *)data;
 udp->checksum=htons(checksum);
 #ifdef VERBOSE
-fprintf(stderr,"Outgoing UDP packet:\n");
+fprintf(stderr,"\n%s>>>>>  Outgoing UDP packet:%s  >>>>>\n", BMAGENTA, BLACK);
 displayUDPPacket(stderr,udp,size_udp);
 #endif
 

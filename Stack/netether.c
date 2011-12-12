@@ -44,19 +44,19 @@ EthernetAddress ETHERNET_ADDRESS_BROADCAST={{0xFF,0x0FF,0xFF,0xFF,0xFF,0xFF}};
 #ifdef VERBOSE
 #define MAX_BYTES_BY_ROW 16
 void displayEthernetPacket(FILE *output,Ethernet_fields *ethernet,int data_size){
-fprintf(output,"Target: %s\n",ethernetAddress2String(ethernet->target));
-fprintf(output,"Sender: %s\n",ethernetAddress2String(ethernet->sender));
-fprintf(output,"Protocol: %04x\n",ntohs(ethernet->protocol));
-fprintf(output,"Data:\n  ");
+fprintf(output,"%sTarget: %s%s\n", BLUE, BLACK, ethernetAddress2String(ethernet->target));
+fprintf(output,"%sSender: %s%s\n", BLUE, BLACK, ethernetAddress2String(ethernet->sender));
+fprintf(output,"%sProtocol: %s%04x\n", BLUE, BLACK, ntohs(ethernet->protocol));
+fprintf(output,"%sData:\n  %s", BLUE, BBLACK);
 int i;
 for(i=0;i<data_size;i++){
-  fprintf(output,"%02x ",ethernet->data[i]);
+  fprintf(output,"%02x ", ethernet->data[i]);
   if(i%MAX_BYTES_BY_ROW == MAX_BYTES_BY_ROW-1){
     fprintf(output,"\n");
     if(i<data_size-1) fprintf(output,"  ");
     }
   }
-if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"\n");
+if(i%MAX_BYTES_BY_ROW != 0) fprintf(output,"%s\n", BLACK);
 }
 #endif
 
@@ -66,7 +66,7 @@ unsigned char *packet=(unsigned char *)malloc(ETHERNET_PACKET_MAX);
 int size=read(intf->descriptor,packet,ETHERNET_PACKET_MAX);
 if(size<=0){ free(packet); return 1; }
 packet=(unsigned char *)realloc(packet,size);
-if(packet==NULL){ perror("ethernetDecodePacket.realloc"); return 1; }
+if(packet==NULL){ printf("%s",RED);perror("ethernetDecodePacket.realloc");printf("%s",BLACK); return 1; }
 int data_size=size-sizeof(Ethernet_fields)+1;
 Ethernet_fields *fields=(Ethernet_fields *)packet;
 EthernetAddress target=fields->target;
@@ -74,7 +74,7 @@ if(!ethernetCompare(target,ETHERNET_ADDRESS_BROADCAST) &&
    !ethernetCompare(target,intf->ether_addr))
   { free(packet); return 0; }
 #ifdef VERBOSE
-fprintf(stderr,"Incoming Ethernet packet (intf=%s)\n",intf->name_int);
+fprintf(stderr,"\n%s<<<<<  Incoming Ethernet packet (intf=%s)  <<<<<\n%s", BGREEN, intf->name_int, BLACK);
 displayEthernetPacket(stderr,fields,data_size);
 #endif
 int proto=ntohs(fields->protocol);
@@ -112,14 +112,14 @@ if(intf==NULL){ free(data); return 0; }
 int offset=sizeof(Ethernet_fields)-1;
 int size=offset+data_size;
 data=(unsigned char *)realloc(data,size);
-if(data==NULL){ perror("ethernetSendPacket.realloc"); return 1; }
+if(data==NULL){ printf("%s",RED);perror("ethernetSendPacket.realloc"); printf("%s",BLACK); return 1; }
 memmove(data+offset,data,data_size);
 Ethernet_fields *fields=(Ethernet_fields *)data;
 fields->target=dst;
 fields->sender=src;
 fields->protocol=htons(proto);
 #ifdef VERBOSE
-fprintf(stderr,"Outgoing Ethernet packet (intf=%s)\n",intf->name_int);
+fprintf(stderr,"\n%s >>>>>  Outgoing Ethernet packet (intf=%s) >>>>>%s\n", BMAGENTA, intf->name_int, BLACK);
 displayEthernetPacket(stderr,fields,data_size);
 #endif
 int sent=write(intf->descriptor,data,size);
