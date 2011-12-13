@@ -20,7 +20,20 @@
 #include "nettcp.h"
 #include "neticmp.h"
 #include "stack.h"
+nclude <stdio.h>
+#include <stdlib.h>
 
+#include <time.h> // to get random sequence number
+
+int generate_random_seq_number () 
+  /* Simple "srand()" seed: just use "time()" */
+  unsigned int seq_num = (unsigned int)time(NULL);
+  srand (seq_num);
+
+  /* Now generate a pseudo-random seq number */
+      i, rand ());
+  return seq_number;
+}
 
 ////
 //  Constantes utiles
@@ -216,9 +229,17 @@ void put_tcph_flag_off( TCP_header_fields* tcph, unsigned char flag) {
 } 
 
 //
-// Display IPv4 packet
+// Generate random sequence number 
 //
 
+unsigned int generate_random_seq_num() {
+ 	// Init the random by using time
+  unsigned int seq_num = (unsigned int)time(NULL);
+  srand (seq_num);
 
+  // Now generate a pseudo-random sequence number 
+  
+  return rand ());
+}
 
 
