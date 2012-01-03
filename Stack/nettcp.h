@@ -55,14 +55,14 @@ typedef struct{
   uint32_t            tcph_ack;               /* numero d'acquittement */
   unsigned char       tcph_offset:4,          /* l'offset: position des données en mots de 32 bits */
                       tcph_reserved:4;        /* le champ reserved  */
-  unsigned char       tcph_flags_CWR:1,       //
-                      tcph_flags_ECE:1,       //
-                      tcph_flags_URG:1,       //   
-                      tcph_flags_ACK:1,       //    TCP HEADER FLAGS (8 bits)
-                      tcph_flags_PSH:1,       //
-                      tcph_flags_RST:1,       //
+  unsigned char       tcph_flags_FIN:1,       //
                       tcph_flags_SYN:1,       //
-                      tcph_flags_FIN:1;       //
+                      tcph_flags_RST:1,       //
+                      tcph_flags_PSH:1,       //
+                      tcph_flags_ACK:1,       //    TCP HEADER FLAGS (8 bits)
+                      tcph_flags_URG:1,       //   
+                      tcph_flags_ECE:1,       //
+                      tcph_flags_CWR:1;       //
   unsigned short int  tcph_window;            /* Taille de la fenetre */
   unsigned short int  tcph_checksum;          /* la somme de controle */
   unsigned short int  tcph_urgptr;            /* Pointeur urgent */
@@ -77,13 +77,29 @@ typedef struct{
   unsigned char       data[1];                /* tcp data */
   } TCP_options_fields;
 
+typedef struct {
+  IPv4Address         	 tcpc_s_ip;      	// server ip address
+  unsigned short int  	 tcpc_s_port;    	// server port on which listen
+  IPv4Address         	 tcpc_c_ip;      	// client ip address
+  unsigned short int  	 tcpc_c_port;    	// client port on which listen
+  unsigned char       	 tcpc_state;     	// Define the different state of TCP connexion
+  uint32_t 			  	     tcb_snd_una;     // oldest unacknowledged sequence number
+  uint32_t 				       tcb_snd_next;    // next sequence number to be sent
+  uint32_t 				       tcb_snd_wndw;    // acknowledgment from the receiving TCP (next sequence
+                                     	  	  	// number expected by the receiving TCP)
+  uint32_t 				       tcb_snd_isn;     // first sequence number of a segment used
+  uint32_t 				       tcb_rcv_isn;     // first received sequence number
+  uint32_t 				       tcb_rcv_next;    // next waiting sequence number
+  uint32_t 				       tcb_rcv_wndw;    // size of receiving window
+      
+
+} TCP_tcb; // TPC Transmission Control Block
 
 #pragma pack(0)
 
 ////
 // Les accesseurs et mutateurs 
 ////
-#define TCP_get_option_MSS_length(tcp_options)  (((tcp_options->data)>>4)&0xff);
 
 
 // TODO: generate_isn() : unit32_t    Generateur de numeros de sequence initial pour 
@@ -101,9 +117,17 @@ void displayTCPPacket(FILE *output,TCP_header_fields *tcph,int size);
 #endif
 unsigned char tcpDecodePacket(EventsEvent *event,EventsSelector *selector);
 unsigned char tcpSendPacket(EventsEvent *event,EventsSelector *selector);
-
 void init_tcph_flags( TCP_header_fields* tcph);                       // puts all flags to 0
 void display_tcph_flags(TCP_header_fields* tcph);                     // show tcp header flags
 void put_tcph_flag_on( TCP_header_fields* tcph, unsigned char flag);  // set the flag to 1 depends on our needs
 void put_tcph_flag_off( TCP_header_fields* tcph, unsigned char flag); // set the flag to 0 depends on our needs
 void display_tcp_options(FILE *output, TCP_options_fields *tcpo);     // Display content of tcp option fields
+
+unsigned int generate_random_seq_num();								  // to generate the sequence number randomly
+
+// Function to handle TCB(Transmission Control Block)
+// -------------------------------------------------------------------------------------
+TCP_tcb* new_tcp_transmission_control_block();				  		  // create a new TCB
+void init_tcp_transmission_control_block(TCP_tcb* tcb);				  // init the TCB
+void add_tcp_transmission_control_block(TCP_tcb* tcb);				  // Add a new TCB to the connections table
+void destroy_tcp_transmission_control_block(unsigned char* tcb_index);// remove a TCB with its index

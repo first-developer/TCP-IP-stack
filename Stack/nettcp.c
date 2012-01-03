@@ -20,20 +20,9 @@
 #include "nettcp.h"
 #include "neticmp.h"
 #include "stack.h"
-nclude <stdio.h>
-#include <stdlib.h>
 
 #include <time.h> // to get random sequence number
 
-int generate_random_seq_number () 
-  /* Simple "srand()" seed: just use "time()" */
-  unsigned int seq_num = (unsigned int)time(NULL);
-  srand (seq_num);
-
-  /* Now generate a pseudo-random seq number */
-      i, rand ());
-  return seq_number;
-}
 
 ////
 //  Constantes utiles
@@ -66,11 +55,11 @@ int generate_random_seq_number ()
 //
 
 void displayTCPPacket(FILE *output, TCP_header_fields *tcph, int size){
-	fprintf(output, "%sTCP Port source: %s%04x\n", BLUE, BLACK, ntohs(tcph->tcph_source));
-	fprintf(output, "%sTCP Port target: %s%04x\n", BLUE, BLACK, ntohs(tcph->tcph_target));
-	fprintf(output, "%sTCP SEQ: %s%d  	\n", BLUE, BLACK, tcph->tcph_flags_CWR		   );
-	fprintf(output, "%sTCP ACK: %s%d  	\n", BLUE, BLACK, tcph->tcph_flags_CWR		   );
-	fprintf(output, "%sTCP Window: %s%04x	\n", BLUE, BLACK, tcph->tcph_window		 	);  
+	fprintf(output, "%sTCP Port source: %s%d\n", BLUE, BLACK, ntohs(tcph->tcph_source));
+	fprintf(output, "%sTCP Port target: %s%d\n", BLUE, BLACK, ntohs(tcph->tcph_target));
+	fprintf(output, "%sTCP SEQ: %s%d  	\n", BLUE, BLACK, tcph->tcph_seq);
+	fprintf(output, "%sTCP ACK: %s%d  	\n", BLUE, BLACK, tcph->tcph_ack );
+	fprintf(output, "%sTCP Window: %s%04x	\n", BLUE, BLACK, tcph->tcph_window);  
 	fprintf(output,	"%sTCP Checksum: %s%04x	\n", BLUE, BLACK, ntohs(tcph->tcph_checksum)  );
 	fprintf(output, "%sTCP Urgent: %s%04x	\n", BLUE, BLACK, tcph->tcph_urgptr		    );  
 	display_tcph_flags(tcph);  		  // affichage des flags
@@ -238,8 +227,42 @@ unsigned int generate_random_seq_num() {
   srand (seq_num);
 
   // Now generate a pseudo-random sequence number 
-  
-  return rand ());
+  return rand ();
 }
 
 
+// Function to handle TCB(Transmission Control Block)
+// -------------------------------------------------------------------------------------
+/*
+ typedef struct {
+  IPv4Address         	tcpc_s_ip;      	// server ip address
+  unsigned short int  	tcpc_s_port;    	// server port on which listen
+  IPv4Address         	tcpc_c_ip;      	// client ip address
+  unsigned short int  	tcpc_c_port;    	// client port on which listen
+  
+ * */
+// create a new TCB
+/*
+TCP_tcb* new_tcp_transmission_control_block() {
+	AssocArray *tcb=NULL;
+	arraysSetValue(&tcb, "tcpc_s_ip",		&type,			sizeof(unsigned char),0);
+	arraysSetValue(&tcb, "tcpc_s_port",		&code,			sizeof(unsigned char),0);
+	arraysSetValue(&tcb, "tcpc_c_ip",		data,			reply_size,AARRAY_DONT_DUPLICATE);
+	arraysSetValue(&tcb, "tcpc_c_port",		&reply_size,	sizeof(int),0);
+	arraysSetValue(&tcb, "tcpc_state",		tcpc_state,	   	
+  	arraysSetValue(&tcb, "tcb_snd_una",		tcb_snd_una,	
+  	arraysSetValue(&tcb, "tcb_snd_next",	tcb_snd_next,  	
+  	arraysSetValue(&tcb, "tcb_snd_isn",	   	tcb_snd_isn,	
+  	arraysSetValue(&tcb, "tcb_rcv_isn",	   	tcb_rcv_isn,	
+  	arraysSetValue(&tcb, "tcb_rcv_next" ,  	tcb_rcv_next,  	
+  	arraysSetValue(&tcb, "tcb_rcv_wndw",   	tcb_rcv_wndw,  	
+	²
+²
+
+
+
+tt the TCB
+void add_tcp_transmission_control_block(TCP_tcb* Add a new TCB to the connections table
+void destroy_tcp_transmission_control_block(unsigned char* tcb_index);// remove a TCB with its index
+
+*/
